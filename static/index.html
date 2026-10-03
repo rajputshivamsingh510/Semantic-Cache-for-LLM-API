@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Semantic Cache Demo</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--fg:#1c2330;--mute:#6b7585;--line:#e3e6eb;--hit:#1d9e75;--miss:#e08a1e;--acc:#3b6fd4}
+@media (prefers-color-scheme:dark){:root{--bg:#14171c;--card:#1d2127;--fg:#e8eaee;--mute:#98a1b0;--line:#2c323b;--hit:#3fc79b;--miss:#f0a43c;--acc:#7aa2f0}}
+*{box-sizing:border-box}body{margin:0;font:15px/1.5 system-ui,Segoe UI,sans-serif;background:var(--bg);color:var(--fg)}
+header{padding:18px 24px;border-bottom:1px solid var(--line)}h1{margin:0;font-size:20px}header p{margin:2px 0 0;color:var(--mute);font-size:13px}
+main{display:grid;grid-template-columns:minmax(280px,1fr) 1.4fr;gap:16px;padding:16px 24px;max-width:1150px;margin:auto}
+@media(max-width:800px){main{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+h2{margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--mute)}
+textarea,input[type=text],input[type=number]{width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);font:inherit}
+textarea{height:210px;resize:vertical}
+button{padding:8px 14px;border:0;border-radius:8px;background:var(--acc);color:#fff;font:inherit;cursor:pointer}
+button.ghost{background:transparent;color:var(--fg);border:1px solid var(--line)}button:disabled{opacity:.45;cursor:default}
+.row{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center}.row>input[type=text]{flex:1;min-width:160px}
+.chip{font-size:12px;padding:3px 9px;border:1px solid var(--line);border-radius:99px;cursor:pointer;color:var(--mute);background:transparent}
+.badge{display:inline-block;padding:2px 10px;border-radius:99px;font-weight:600;font-size:13px;color:#fff}
+.hit{background:var(--hit)}.miss{background:var(--miss)}
+#ans{margin:10px 0 6px;white-space:pre-wrap}.meta{color:var(--mute);font-size:13px}
+.big{font-size:28px;font-weight:700}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}.stat{background:var(--bg);border-radius:8px;padding:8px}
+.stat b{display:block;font-size:18px}.stat span{font-size:11px;color:var(--mute)}
+#bars{display:flex;align-items:flex-end;gap:5px;height:140px;margin-top:8px;overflow-x:auto;padding-bottom:2px}
+.bar{min-width:26px;border-radius:4px 4px 0 0;position:relative}.bar i{position:absolute;top:-16px;left:50%;transform:translateX(-50%);font:10px system-ui;color:var(--mute);white-space:nowrap}
+.legend{font-size:12px;color:var(--mute);margin-top:6px}.dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin:0 4px 0 8px}
+</style></head><body>
+<header><h1>Semantic Cache Demo</h1><p>Ask about your document. Similar questions are answered from the cache instead of calling the LLM again.</p></header>
+<main>
+ <section class="card"><h2>1. Document</h2>
+  <input type="text" id="name" placeholder="Document name" value="HR policy">
+  <textarea id="doc" placeholder="Paste your document here (max 20,000 characters)"></textarea>
+  <div class="row"><input type="file" id="file" accept=".txt,.md"><button class="ghost" id="sample">Use sample</button></div>
+  <div class="row"><button id="load">Load document</button><span class="meta" id="docinfo"></span></div>
+  <div class="meta" style="margin-top:8px">Loading a changed document clears its cached answers (they would be stale).</div>
+ </section>
+ <div>
+  <section class="card"><h2>2. Ask</h2>
+   <div class="row" style="margin-top:0"><input type="text" id="q" placeholder="Ask something about the document" disabled><button id="ask" disabled>Ask</button></div>
+   <div class="row" id="chips"></div>
+   <div id="out" style="display:none">
+     <div class="row"><span class="badge" id="badge"></span><span class="big" id="time"></span><span class="meta" id="speed"></span></div>
+     <div id="ans"></div><div class="meta" id="detail"></div>
+   </div>
+  </section>
+  <section class="card" style="margin-top:16px"><h2>Response time per question (ms)</h2>
+   <div id="bars"></div>
+   <div class="legend"><span class="dot hit"></span>cache hit<span class="dot miss"></span>cache miss (LLM call)</div>
+   <div class="stats">
+    <div class="stat"><b id="s_hit">0%</b><span>hit rate</span></div>
+    <div class="stat"><b id="s_calls">0</b><span>LLM calls avoided</span></div>
+    <div class="stat"><b id="s_tok">0</b><span>tokens saved</span></div>
+    <div class="stat"><b id="s_cost">$0</b><span>cost saved</span></div>
+   </div>
+   <div class="row"><button class="ghost" id="clear" disabled>Clear this document's cache</button>
+    <label class="meta">threshold <input type="number" id="thr" value="0.8" step="0.05" min="0" max="1" style="width:70px"></label></div>
+  </section>
+ </div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const SAMPLE=`Employees receive 24 days of paid leave per calendar year. Unused leave can be carried over for up to 5 days.
+Remote work is allowed up to 3 days per week with manager approval. Employees must be reachable during core hours, 10am to 4pm.
+Payroll is processed on the 28th of every month. Salary is credited within one working day.
+Expense reports must be submitted within 30 days of purchase through the finance portal. Travel is reimbursed at actual cost with receipts.
+Health insurance covers hospitalization, dental and vision for the employee and immediate family from the first day of joining.`;
+const CHIPS=["How many days of paid leave do I get?","What is the leave policy?","How many days off per year?","Can I work from home?","When is salary credited?"];
+let docId=null, hist=[], timer=null;
+CHIPS.forEach(t=>{const b=document.createElement('button');b.className='chip';b.textContent=t;b.onclick=()=>{$('q').value=t;ask()};$('chips').append(b)});
+$('sample').onclick=()=>{$('doc').value=SAMPLE};
+$('file').onchange=async e=>{const f=e.target.files[0];if(f){$('doc').value=await f.text();$('name').value=f.name}};
+async function api(method,url,body){const r=await fetch(url,{method,headers:{'content-type':'application/json'},body:body&&JSON.stringify(body)});
+  const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.detail||r.statusText);return j}
+$('load').onclick=async()=>{
+  try{const body={name:$('name').value||'document',text:$('doc').value};
+    if(!body.text.trim())return alert('Paste or upload a document first');
+    const r=docId?await api('PUT','/v1/docs/'+docId,body):await api('POST','/v1/docs',body);
+    docId=r.doc_id;$('docinfo').textContent=`Loaded: ${r.chars} chars (~${r.approx_tokens} tokens)`+(r.cache_entries_removed!=null?`, ${r.cache_entries_removed} cached answers cleared`:'');
+    ['q','ask','clear'].forEach(i=>$(i).disabled=false);if(r.cache_entries_removed!=null)hist=hist.concat([{sep:true}]),bars()
+  }catch(e){alert(e.message)}};
+$('clear').onclick=async()=>{const r=await api('POST','/cache/invalidate',{namespace:docId});$('docinfo').textContent=`Cleared ${r.removed} cached answers`;hist.push({sep:true});bars()};
+$('ask').onclick=ask;$('q').onkeydown=e=>{if(e.key==='Enter')ask()};
+async function ask(){
+  const q=$('q').value.trim();if(!q||!docId)return;
+  $('out').style.display='block';$('badge').className='badge';$('badge').textContent='Working...';$('ans').textContent='';$('detail').textContent='';$('speed').textContent='';
+  const t0=performance.now();clearInterval(timer);timer=setInterval(()=>$('time').textContent=((performance.now()-t0)/1000).toFixed(1)+' s',100);
+  $('ask').disabled=true;
+  try{const r=await api('POST','/v1/ask',{doc_id:docId,question:q,similarity_threshold:parseFloat($('thr').value)});
+    clearInterval(timer);const hit=r.cache.hit,ms=r.latency_ms;
+    $('badge').textContent=hit?'CACHE HIT':'CACHE MISS';$('badge').className='badge '+(hit?'hit':'miss');
+    $('time').textContent=ms>=1000?(ms/1000).toFixed(2)+' s':ms.toFixed(1)+' ms';$('ans').textContent=r.response;
+    const misses=hist.filter(h=>!h.sep&&!h.hit);const avgMiss=misses.length?misses.reduce((a,h)=>a+h.ms,0)/misses.length:0;
+    $('speed').textContent=hit&&avgMiss?`${Math.round(avgMiss/ms)}x faster than an LLM call`:'';
+    $('detail').textContent=hit?`Matched earlier question: "${r.cache.matched_query}" (similarity ${r.cache.similarity}). Saved ${r.usage.tokens_saved} tokens, $${r.usage.cost_saved_usd}.`
+      :`Sent the document to the LLM: ${r.usage.tokens_in} tokens in, cost $${r.usage.cost_usd}. Answer stored in cache. Best similarity to earlier questions: ${r.cache.similarity}.`;
+    hist.push({hit,ms,q});bars();stats()
+  }catch(e){clearInterval(timer);$('badge').textContent='Error';$('ans').textContent=e.message}
+  $('ask').disabled=false}
+function bars(){const el=$('bars');el.innerHTML='';const max=Math.max(1000,...hist.filter(h=>!h.sep).map(h=>h.ms));
+  hist.forEach(h=>{const d=document.createElement('div');
+    if(h.sep){d.style.cssText='width:1px;align-self:stretch;background:var(--line);margin:0 4px';}
+    else{d.className='bar';d.style.height=Math.max(4,h.ms/max*118)+'px';d.style.background=h.hit?'var(--hit)':'var(--miss)';d.title=h.q;
+      const i=document.createElement('i');i.textContent=Math.round(h.ms);d.append(i)}
+    el.append(d)});el.scrollLeft=el.scrollWidth}
+async function stats(){const s=await api('GET','/stats');
+  $('s_hit').textContent=Math.round((s.hit_rate||0)*100)+'%';$('s_calls').textContent=s.hits||0;
+  $('s_tok').textContent=Math.round(s.tokens_saved||0).toLocaleString();$('s_cost').textContent='$'+(s.cost_saved_usd||0).toFixed(5)}
+</script></body></html>

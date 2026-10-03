@@ -1,0 +1,12 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+  api:
+    build: .
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      EMBEDDER: sbert
+    ports: ["8000:8000"]
+    depends_on: [redis]
