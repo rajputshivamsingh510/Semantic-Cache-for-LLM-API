@@ -1,13 +1,18 @@
+# --- needed to run the app (Render) ---
 fastapi>=0.110
 uvicorn[standard]>=0.29
 numpy>=1.26
-redis>=5.0
 pydantic>=2.6
-# optional: real semantic embeddings / real LLM
+httpx>=0.27
+python-dotenv>=1.0
+fastembed>=0.3
+redis>=5.0
+
+# --- optional, leave commented on Render (too much memory) ---
 # sentence-transformers>=2.7
 # anthropic>=0.40
-# dev
-pytest
-pytest-asyncio
-httpx
-fakeredis
+
+# --- dev / tests only (not needed on Render) ---
+# pytest
+# pytest-asyncio
+# fakeredis

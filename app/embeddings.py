@@ -32,5 +32,19 @@ class SBertEmbedder:
     def embed(self, text: str) -> np.ndarray:
         return self.model.encode(text, normalize_embeddings=True).astype(np.float32)
 
+class FastEmbedEmbedder:
+    """Lightweight ONNX embedder (no PyTorch). Fits small servers."""
+    def __init__(self, name="sentence-transformers/all-MiniLM-L6-v2"):
+        from fastembed import TextEmbedding
+        self.model = TextEmbedding(model_name=name)
+    def embed(self, text: str) -> np.ndarray:
+        v = np.asarray(next(iter(self.model.embed([text]))), dtype=np.float32)
+        n = np.linalg.norm(v)
+        return v / n if n else v    
+
 def get_embedder(kind: str):
-    return SBertEmbedder() if kind == "sbert" else HashEmbedder()
+    if kind == "sbert":
+        return SBertEmbedder()
+    if kind == "fastembed":
+        return FastEmbedEmbedder()
+    return HashEmbedder()
