@@ -5,7 +5,6 @@
 **Answer repeated questions in milliseconds instead of calling the LLM again, even when the wording is different.**
 
 [![Live Demo](https://img.shields.io/badge/%E2%96%B6%20Live%20Demo-Open-brightgreen?style=for-the-badge)](https://semantic-cache-for-llm-api.onrender.com/)
-[![CI](https://github.com/YOUR_USERNAME/YOUR_REPO/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/YOUR_REPO/actions)
 ![Python](https://img.shields.io/badge/python-3.11+-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688)
 ![Redis](https://img.shields.io/badge/Redis-optional-DC382D)
