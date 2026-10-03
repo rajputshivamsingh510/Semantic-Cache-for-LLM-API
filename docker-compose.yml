@@ -3,10 +3,20 @@ services:
     image: redis:7-alpine
     ports: ["6379:6379"]
     command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_PASSWORD: pw
+      POSTGRES_DB: kb
+    ports: ["5432:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
   api:
     build: .
+    env_file: .env
     environment:
       REDIS_URL: redis://redis:6379/0
-      EMBEDDER: sbert
+      DATABASE_URL: postgresql://postgres:pw@db:5432/kb
     ports: ["8000:8000"]
-    depends_on: [redis]
+    depends_on: [redis, db]
+volumes:
+  pgdata:

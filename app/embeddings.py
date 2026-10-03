@@ -1,4 +1,4 @@
-"""Pluggable embedders. All return L2-normalised float32 vectors."""
+"""Pluggable embedders. All return L2-normalised float32 vectors. embed_many() is the fast batch path."""
 import hashlib, re
 import numpy as np
 
@@ -11,9 +11,14 @@ def _stem(w: str) -> str:
             return w[: -len(suf)]
     return w
 
+def _norm(v: np.ndarray) -> np.ndarray:
+    v = np.asarray(v, dtype=np.float32)
+    n = np.linalg.norm(v)
+    return v / n if n else v
+
 class HashEmbedder:
     """Dependency-free lexical embedder (stemmed bag-of-words, hashed). For tests/offline
-    only: it matches overlapping words, NOT meaning. Use SBertEmbedder in real deployments."""
+    only: it matches overlapping words, NOT meaning. Use SBert/FastEmbed for real deployments."""
     dim = 512
     def embed(self, text: str) -> np.ndarray:
         v = np.zeros(self.dim, dtype=np.float32)
@@ -22,8 +27,9 @@ class HashEmbedder:
                 continue
             h = int(hashlib.md5(_stem(w).encode()).hexdigest(), 16)
             v[h % self.dim] += 1.0
-        n = np.linalg.norm(v)
-        return v / n if n else v
+        return _norm(v)
+    def embed_many(self, texts):
+        return np.stack([self.embed(t) for t in texts]) if texts else np.zeros((0, self.dim), np.float32)
 
 class SBertEmbedder:
     def __init__(self, name="sentence-transformers/all-MiniLM-L6-v2"):
@@ -31,6 +37,9 @@ class SBertEmbedder:
         self.model = SentenceTransformer(name)
     def embed(self, text: str) -> np.ndarray:
         return self.model.encode(text, normalize_embeddings=True).astype(np.float32)
+    def embed_many(self, texts):
+        if not texts: return np.zeros((0, 384), np.float32)
+        return self.model.encode(list(texts), batch_size=32, normalize_embeddings=True).astype(np.float32)
 
 class FastEmbedEmbedder:
     """Lightweight ONNX embedder (no PyTorch). Fits small servers."""
@@ -38,9 +47,10 @@ class FastEmbedEmbedder:
         from fastembed import TextEmbedding
         self.model = TextEmbedding(model_name=name)
     def embed(self, text: str) -> np.ndarray:
-        v = np.asarray(next(iter(self.model.embed([text]))), dtype=np.float32)
-        n = np.linalg.norm(v)
-        return v / n if n else v    
+        return _norm(next(iter(self.model.embed([text]))))
+    def embed_many(self, texts):
+        if not texts: return np.zeros((0, 384), np.float32)
+        return np.stack([_norm(v) for v in self.model.embed(list(texts))])
 
 def get_embedder(kind: str):
     if kind == "sbert":

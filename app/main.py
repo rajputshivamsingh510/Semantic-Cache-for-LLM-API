@@ -9,6 +9,7 @@ from .cache import SemanticCache
 from .embeddings import get_embedder
 from .llm import get_llm
 from .service import answer
+from .kb_routes import make_kb_router
 
 app = FastAPI(title="Semantic Cache for LLM APIs")
 backend = RedisBackend(settings.redis_url) if settings.redis_url else MemoryBackend()
@@ -42,7 +43,7 @@ async def _rate_limit(request: Request, response: Response):
     if n > settings.rate_limit:
         await backend.incr_stat("rate_limited")
         raise HTTPException(429, "rate limit exceeded", headers={"Retry-After": str(settings.rate_window)})
-
+app.include_router(make_kb_router(cache, lambda: llm, _rate_limit))
 class InvalidateReq(BaseModel):
     namespace: str | None = None
     similar_to: str | None = None       # drop entries semantically related to this text

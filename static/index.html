@@ -6,42 +6,49 @@
 @media (prefers-color-scheme:dark){:root{--bg:#14171c;--card:#1d2127;--fg:#e8eaee;--mute:#98a1b0;--line:#2c323b;--hit:#3fc79b;--miss:#f0a43c;--acc:#7aa2f0}}
 *{box-sizing:border-box}body{margin:0;font:15px/1.5 system-ui,Segoe UI,sans-serif;background:var(--bg);color:var(--fg)}
 header{padding:18px 24px;border-bottom:1px solid var(--line)}h1{margin:0;font-size:20px}header p{margin:2px 0 0;color:var(--mute);font-size:13px}
-main{display:grid;grid-template-columns:minmax(280px,1fr) 1.4fr;gap:16px;padding:16px 24px;max-width:1150px;margin:auto}
+main{display:grid;grid-template-columns:minmax(290px,1fr) 1.4fr;gap:16px;padding:16px 24px;max-width:1150px;margin:auto}
 @media(max-width:800px){main{grid-template-columns:1fr}}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
 h2{margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--mute)}
 textarea,input[type=text],input[type=number]{width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);font:inherit}
-textarea{height:210px;resize:vertical}
+textarea{height:140px;resize:vertical}
 button{padding:8px 14px;border:0;border-radius:8px;background:var(--acc);color:#fff;font:inherit;cursor:pointer}
-button.ghost{background:transparent;color:var(--fg);border:1px solid var(--line)}button:disabled{opacity:.45;cursor:default}
+button.ghost{background:transparent;color:var(--fg);border:1px solid var(--line)}button.sm{padding:3px 9px;font-size:12px}button:disabled{opacity:.45;cursor:default}
 .row{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center}.row>input[type=text]{flex:1;min-width:160px}
 .chip{font-size:12px;padding:3px 9px;border:1px solid var(--line);border-radius:99px;cursor:pointer;color:var(--mute);background:transparent}
 .badge{display:inline-block;padding:2px 10px;border-radius:99px;font-weight:600;font-size:13px;color:#fff}
 .hit{background:var(--hit)}.miss{background:var(--miss)}
 #ans{margin:10px 0 6px;white-space:pre-wrap}.meta{color:var(--mute);font-size:13px}
 .big{font-size:28px;font-weight:700}
+.doc{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px}
+.doc b{font-size:14px}.doc span{font-size:12px;color:var(--mute)}
+details{margin-top:8px;font-size:13px}summary{cursor:pointer;color:var(--mute)}
+.src{padding:6px 8px;margin-top:6px;border-left:3px solid var(--acc);background:var(--bg);border-radius:4px}.src b{font-size:12px}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}.stat{background:var(--bg);border-radius:8px;padding:8px}
 .stat b{display:block;font-size:18px}.stat span{font-size:11px;color:var(--mute)}
 #bars{display:flex;align-items:flex-end;gap:5px;height:140px;margin-top:8px;overflow-x:auto;padding-bottom:2px}
 .bar{min-width:26px;border-radius:4px 4px 0 0;position:relative}.bar i{position:absolute;top:-16px;left:50%;transform:translateX(-50%);font:10px system-ui;color:var(--mute);white-space:nowrap}
 .legend{font-size:12px;color:var(--mute);margin-top:6px}.dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin:0 4px 0 8px}
 </style></head><body>
-<header><h1>Semantic Cache Demo</h1><p>Ask about your document. Similar questions are answered from the cache instead of calling the LLM again.</p></header>
+<header><h1>Semantic Cache Demo</h1><p>Company knowledge base. Reworded questions are answered from the cache instead of calling the LLM again.</p></header>
 <main>
- <section class="card"><h2>1. Document</h2>
-  <input type="text" id="name" placeholder="Document name" value="HR policy">
-  <textarea id="doc" placeholder="Paste your document here (max 20,000 characters)"></textarea>
-  <div class="row"><input type="file" id="file" accept=".txt,.md"><button class="ghost" id="sample">Use sample</button></div>
-  <div class="row"><button id="load">Load document</button><span class="meta" id="docinfo"></span></div>
-  <div class="meta" style="margin-top:8px">Loading a changed document clears its cached answers (they would be stale).</div>
+ <section class="card"><h2>1. Knowledge base</h2>
+  <div id="docs"></div><div class="meta" id="empty">No documents yet.</div>
+  <input type="text" id="name" placeholder="Document name" style="margin-top:10px">
+  <textarea id="doc" placeholder="Paste a policy or document, or choose a PDF / .txt file below"></textarea>
+  <div class="row"><input type="file" id="file" accept=".pdf,.txt,.md"></div>
+  <div class="row"><button id="save">Add document</button><button class="ghost" id="cancel" style="display:none">Cancel edit</button>
+   <button class="ghost" id="sample">Load sample company docs</button></div>
+  <div class="meta" id="docinfo" style="margin-top:8px"></div>
+  <div class="meta" style="margin-top:6px">Editing or deleting a document clears only the cached answers that used it.</div>
  </section>
  <div>
   <section class="card"><h2>2. Ask</h2>
-   <div class="row" style="margin-top:0"><input type="text" id="q" placeholder="Ask something about the document" disabled><button id="ask" disabled>Ask</button></div>
+   <div class="row" style="margin-top:0"><input type="text" id="q" placeholder="Ask something about the company" disabled><button id="ask" disabled>Ask</button></div>
    <div class="row" id="chips"></div>
    <div id="out" style="display:none">
      <div class="row"><span class="badge" id="badge"></span><span class="big" id="time"></span><span class="meta" id="speed"></span></div>
-     <div id="ans"></div><div class="meta" id="detail"></div>
+     <div id="ans"></div><div class="meta" id="detail"></div><div id="srcs"></div>
    </div>
   </section>
   <section class="card" style="margin-top:16px"><h2>Response time per question (ms)</h2>
@@ -53,47 +60,86 @@ button.ghost{background:transparent;color:var(--fg);border:1px solid var(--line)
     <div class="stat"><b id="s_tok">0</b><span>tokens saved</span></div>
     <div class="stat"><b id="s_cost">$0</b><span>cost saved</span></div>
    </div>
-   <div class="row"><button class="ghost" id="clear" disabled>Clear this document's cache</button>
+   <div class="row"><button class="ghost" id="clear">Clear all cached answers</button>
     <label class="meta">threshold <input type="number" id="thr" value="0.8" step="0.05" min="0" max="1" style="width:70px"></label></div>
   </section>
  </div>
 </main>
 <script>
 const $=id=>document.getElementById(id);
-const SAMPLE=`Employees receive 24 days of paid leave per calendar year. Unused leave can be carried over for up to 5 days.
-Remote work is allowed up to 3 days per week with manager approval. Employees must be reachable during core hours, 10am to 4pm.
-Payroll is processed on the 28th of every month. Salary is credited within one working day.
-Expense reports must be submitted within 30 days of purchase through the finance portal. Travel is reimbursed at actual cost with receipts.
-Health insurance covers hospitalization, dental and vision for the employee and immediate family from the first day of joining.`;
-const CHIPS=["How many days of paid leave do I get?","What is the leave policy?","How many days off per year?","Can I work from home?","When is salary credited?"];
-let docId=null, hist=[], timer=null;
+const SAMPLES=[
+["HR Handbook",`LEAVE POLICY
+Full-time employees receive 24 days of paid leave per calendar year. Leave is credited on 1 January.
+Up to 5 unused leave days can be carried over to the next year. Any extra days expire on 31 March.
+Employees get 12 days of paid sick leave per year. A medical certificate is needed for sick leave longer than 2 days.
+Maternity leave is 26 weeks and paternity leave is 10 working days. Both are fully paid.
+REMOTE WORK
+Employees can work from home up to 3 days per week with manager approval. Everyone must be reachable during core hours, 10am to 4pm.
+The company gives a one-time remote work allowance of Rs 15,000 for a desk and chair.
+NOTICE PERIOD
+The notice period is 60 days for permanent employees and 30 days during probation. Probation lasts 6 months.`],
+["Finance and Travel",`PAYROLL
+Salary is processed on the 28th of every month and credited within one working day. If the 28th is a holiday, salary is processed on the previous working day.
+Payslips are available on the HR portal from the 1st of the next month.
+EXPENSES AND TRAVEL
+Expense reports must be submitted through the finance portal within 30 days of the purchase, with receipts.
+Hotel stays are reimbursed up to Rs 6,000 per night in metro cities and Rs 4,000 elsewhere.
+Daily meal allowance during travel is Rs 1,200. Economy class is used for flights under 6 hours.`],
+["IT and Security",`Laptops are replaced every 3 years. Report a lost laptop to the IT desk within 24 hours.
+Passwords must be changed every 90 days and must be at least 12 characters long. Use the company VPN when working from public networks.
+To reset a VPN password, open the IT portal and choose "Reset VPN access". A new password is emailed within 10 minutes.
+Health insurance covers hospitalization, dental and vision for the employee, spouse and up to 2 children from the first day of joining. The yearly cover is Rs 5,00,000.`]];
+const CHIPS=["How many days of paid leave do I get?","What is the yearly leave allowance?","How do I reset my VPN password?","What is the hotel reimbursement limit?","When is salary credited?"];
+let editing=null, hist=[], timer=null, nDocs=0, pending=null;
+const PH='Paste a policy or document, or choose a PDF / .txt file below';
 CHIPS.forEach(t=>{const b=document.createElement('button');b.className='chip';b.textContent=t;b.onclick=()=>{$('q').value=t;ask()};$('chips').append(b)});
-$('sample').onclick=()=>{$('doc').value=SAMPLE};
-$('file').onchange=async e=>{const f=e.target.files[0];if(f){$('doc').value=await f.text();$('name').value=f.name}};
 async function api(method,url,body){const r=await fetch(url,{method,headers:{'content-type':'application/json'},body:body&&JSON.stringify(body)});
   const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.detail||r.statusText);return j}
-$('load').onclick=async()=>{
-  try{const body={name:$('name').value||'document',text:$('doc').value};
-    if(!body.text.trim())return alert('Paste or upload a document first');
-    const r=docId?await api('PUT','/v1/docs/'+docId,body):await api('POST','/v1/docs',body);
-    docId=r.doc_id;$('docinfo').textContent=`Loaded: ${r.chars} chars (~${r.approx_tokens} tokens)`+(r.cache_entries_removed!=null?`, ${r.cache_entries_removed} cached answers cleared`:'');
-    ['q','ask','clear'].forEach(i=>$(i).disabled=false);if(r.cache_entries_removed!=null)hist=hist.concat([{sep:true}]),bars()
-  }catch(e){alert(e.message)}};
-$('clear').onclick=async()=>{const r=await api('POST','/cache/invalidate',{namespace:docId});$('docinfo').textContent=`Cleared ${r.removed} cached answers`;hist.push({sep:true});bars()};
+const note=m=>$('docinfo').textContent=m;
+const removed=r=>r.cache_entries_removed?` ${r.cache_entries_removed} cached answer(s) cleared.`:'';
+async function refresh(){const d=await api('GET','/v1/kb/docs');nDocs=d.length;$('docs').innerHTML='';$('empty').style.display=d.length?'none':'block';
+  d.forEach(x=>{const row=document.createElement('div');row.className='doc';
+    const l=document.createElement('div');l.innerHTML='<b></b><br><span></span>';l.querySelector('b').textContent=x.name;l.querySelector('span').textContent=`${x.chars} chars, ${x.chunks} chunks`;
+    const bt=document.createElement('div');
+    const e=document.createElement('button');e.className='ghost sm';e.textContent='Edit';e.onclick=()=>edit(x.doc_id);
+    const r=document.createElement('button');r.className='ghost sm';r.style.marginLeft='6px';r.textContent='Remove';r.onclick=()=>del(x.doc_id);
+    bt.append(e,r);row.append(l,bt);$('docs').append(row)});
+  $('q').disabled=$('ask').disabled=!d.length}
+async function edit(id){const d=await api('GET','/v1/kb/docs/'+id);editing=id;$('name').value=d.name;$('doc').value=d.text;$('save').textContent='Save changes';$('cancel').style.display='inline-block'}
+function reset(){pending=null;$('file').value='';$('doc').placeholder=PH;editing=null;$('name').value='';$('doc').value='';$('save').textContent='Add document';$('cancel').style.display='none'}
+$('cancel').onclick=reset;
+async function del(id){const r=await api('DELETE','/v1/kb/docs/'+id);if(editing===id)reset();note('Document removed.'+removed(r));refresh()}
+$('save').onclick=async()=>{const btn=$('save');
+  try{let r;
+    if(pending&&!editing){btn.disabled=true;btn.textContent='Reading and indexing...';note('Processing '+pending.name+' (large PDFs can take a while)...');
+      const fd=new FormData();fd.append('file',pending);const x=await fetch('/v1/kb/upload',{method:'POST',body:fd});r=await x.json().catch(()=>({}));
+      if(!x.ok)throw new Error(r.detail||x.statusText)}
+    else{const b={name:$('name').value||'document',text:$('doc').value};if(!b.text.trim())return alert('Paste text or choose a file first');
+      btn.disabled=true;r=editing?await api('PUT','/v1/kb/docs/'+editing,b):await api('POST','/v1/kb/docs',b)}
+    note(`${editing?'Updated':'Added'}: ${r.pages?r.pages+' pages, ':''}${r.chunks} chunks.`+removed(r));
+    if(r.cache_entries_removed)hist.push({sep:true});bars();reset();refresh()
+  }catch(e){alert(e.message);note('')}finally{btn.disabled=false;btn.textContent=editing?'Save changes':'Add document'}};
+$('sample').onclick=async()=>{for(const [name,text] of SAMPLES)await api('POST','/v1/kb/docs',{name,text});note('Sample company documents added.');refresh()};
+$('file').onchange=async e=>{const f=e.target.files[0];if(!f)return;$('name').value=f.name;
+  if(f.name.toLowerCase().endsWith('.pdf')){pending=f;$('doc').value='';$('doc').placeholder='PDF selected: '+f.name+'. Click "Add document" to upload it.'}
+  else{pending=null;$('doc').placeholder=PH;$('doc').value=await f.text()}};
+$('clear').onclick=async()=>{const r=await api('POST','/cache/invalidate',{namespace:'kb'});note(`Cleared ${r.removed} cached answers.`);hist.push({sep:true});bars()};
 $('ask').onclick=ask;$('q').onkeydown=e=>{if(e.key==='Enter')ask()};
 async function ask(){
-  const q=$('q').value.trim();if(!q||!docId)return;
-  $('out').style.display='block';$('badge').className='badge';$('badge').textContent='Working...';$('ans').textContent='';$('detail').textContent='';$('speed').textContent='';
+  const q=$('q').value.trim();if(!q||!nDocs)return;
+  $('out').style.display='block';$('badge').className='badge';$('badge').textContent='Working...';$('ans').textContent='';$('detail').textContent='';$('speed').textContent='';$('srcs').innerHTML='';
   const t0=performance.now();clearInterval(timer);timer=setInterval(()=>$('time').textContent=((performance.now()-t0)/1000).toFixed(1)+' s',100);
   $('ask').disabled=true;
-  try{const r=await api('POST','/v1/ask',{doc_id:docId,question:q,similarity_threshold:parseFloat($('thr').value)});
+  try{const r=await api('POST','/v1/kb/ask',{question:q,similarity_threshold:parseFloat($('thr').value)});
     clearInterval(timer);const hit=r.cache.hit,ms=r.latency_ms;
     $('badge').textContent=hit?'CACHE HIT':'CACHE MISS';$('badge').className='badge '+(hit?'hit':'miss');
     $('time').textContent=ms>=1000?(ms/1000).toFixed(2)+' s':ms.toFixed(1)+' ms';$('ans').textContent=r.response;
     const misses=hist.filter(h=>!h.sep&&!h.hit);const avgMiss=misses.length?misses.reduce((a,h)=>a+h.ms,0)/misses.length:0;
     $('speed').textContent=hit&&avgMiss?`${Math.round(avgMiss/ms)}x faster than an LLM call`:'';
-    $('detail').textContent=hit?`Matched earlier question: "${r.cache.matched_query}" (similarity ${r.cache.similarity}). Saved ${r.usage.tokens_saved} tokens, $${r.usage.cost_saved_usd}.`
-      :`Sent the document to the LLM: ${r.usage.tokens_in} tokens in, cost $${r.usage.cost_usd}. Answer stored in cache. Best similarity to earlier questions: ${r.cache.similarity}.`;
+    $('detail').textContent=hit?`Matched earlier question: "${r.cache.matched_query}" (similarity ${r.cache.similarity}). Saved ${r.usage.tokens_saved} tokens.`
+      :`Retrieved the relevant passages and sent them to the LLM: ${r.usage.tokens_in} tokens in. Answer stored in cache. Best similarity to earlier questions: ${r.cache.similarity}.`;
+    if(r.sources&&r.sources.length){const d=document.createElement('details');const s=document.createElement('summary');s.textContent=`Sources used (${r.sources.length})`;d.append(s);
+      r.sources.forEach(x=>{const e=document.createElement('div');e.className='src';const b=document.createElement('b');b.textContent=`${x.doc} (relevance ${x.score})`;e.append(b,document.createElement('br'),document.createTextNode(x.snippet+(x.snippet.length>=160?'...':'')));d.append(e)});$('srcs').append(d)}
     hist.push({hit,ms,q});bars();stats()
   }catch(e){clearInterval(timer);$('badge').textContent='Error';$('ans').textContent=e.message}
   $('ask').disabled=false}
@@ -106,4 +152,5 @@ function bars(){const el=$('bars');el.innerHTML='';const max=Math.max(1000,...hi
 async function stats(){const s=await api('GET','/stats');
   $('s_hit').textContent=Math.round((s.hit_rate||0)*100)+'%';$('s_calls').textContent=s.hits||0;
   $('s_tok').textContent=Math.round(s.tokens_saved||0).toLocaleString();$('s_cost').textContent='$'+(s.cost_saved_usd||0).toFixed(5)}
+refresh();
 </script></body></html>

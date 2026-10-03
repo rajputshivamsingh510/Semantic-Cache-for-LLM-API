@@ -38,3 +38,20 @@ class SemanticCache:
             if float(e.embedding @ emb) >= threshold:
                 n += await self.b.delete(e.id)
         return n
+    async def invalidate_by_source(self, doc_id, ns="kb") -> int:
+        """Drop cached answers that were built from this document."""
+        n = 0
+        for e in await self.b.all(ns):
+            if any(src.get("doc_id") == doc_id for src in e.meta.get("sources", [])):
+                n += await self.b.delete(e.id)
+        return n
+
+    async def invalidate_related(self, vecs, ns="kb", threshold=0.5) -> int:
+        """Drop cached answers whose question looks related to new content."""
+        if len(vecs) == 0:
+            return 0
+        n = 0
+        for e in await self.b.all(ns):
+            if float((vecs @ e.embedding).max()) >= threshold:
+                n += await self.b.delete(e.id)
+        return n
