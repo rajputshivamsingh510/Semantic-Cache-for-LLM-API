@@ -4,16 +4,27 @@
 
 **Answer repeated questions in milliseconds instead of calling the LLM again, even when the wording is different.**
 
-[![Live Demo](https://img.shields.io/badge/%E2%96%B6%20Live%20Demo-Open-brightgreen?style=for-the-badge)](YOUR_DEMO_LINK_HERE)
+[![Live Demo](https://img.shields.io/badge/%E2%96%B6%20Live%20Demo-Open-brightgreen?style=for-the-badge)](https://semantic-cache-for-llm-api.onrender.com/)
 [![CI](https://github.com/YOUR_USERNAME/YOUR_REPO/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/YOUR_REPO/actions)
 ![Python](https://img.shields.io/badge/python-3.11+-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688)
 ![Redis](https://img.shields.io/badge/Redis-optional-DC382D)
+## Screenshots
 
-<!-- Replace with your recording: save it as docs/demo.gif -->
-![Demo](docs/demo.gif)
+### 1. First question: cache miss
+The document goes to the LLM and the answer is stored. The timer shows the full LLM latency.
 
-</div>
+![Cache miss](docs/1-miss.png)
+
+### 2. Reworded question: cache hit
+A similar question is answered from the cache in milliseconds, with the matched question and similarity score shown.
+
+![Cache hit](docs/1-hit.png)
+
+### 3. Response times and savings
+Orange bars are LLM calls and green bars are cache hits. The cards show hit rate, LLM calls avoided, tokens saved and cost saved.
+
+![Stats](docs/response-time.png)
 
 ---
 
